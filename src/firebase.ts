@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getAuth, type Auth } from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore";
 
 const config = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -17,7 +17,22 @@ export const adminConfig = {
   uid: import.meta.env.VITE_ADMIN_UID || ""
 };
 export const adminConfigured = Object.values(adminConfig).every(Boolean);
-const app = initializeApp(firebaseConfigured ? config : { apiKey: "missing", projectId: "missing", appId: "missing" });
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+let authInstance: Auth | null = null;
+let dbInstance: Firestore | null = null;
+let initializationError = "";
+if (firebaseConfigured && adminConfigured) {
+  try {
+    const app = initializeApp(config);
+    authInstance = getAuth(app);
+    dbInstance = getFirestore(app);
+  } catch (error) {
+    initializationError = error instanceof Error ? error.message : "تعذر تهيئة Firebase";
+  }
+} else {
+  initializationError = "إعدادات الاتصال الآمن غير مكتملة";
+}
+export const firebaseReady = Boolean(authInstance && dbInstance);
+export const firebaseInitializationError = initializationError;
+export const auth = authInstance as Auth;
+export const db = dbInstance as Firestore;
 export const ELECTION_ID = "ai-125";
