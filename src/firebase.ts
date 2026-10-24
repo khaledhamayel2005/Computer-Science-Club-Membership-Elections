@@ -11,6 +11,12 @@ const config = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 export const firebaseConfigured = Object.values(config).every(Boolean);
+export const adminConfig = {
+  username: import.meta.env.VITE_ADMIN_USERNAME || "",
+  email: import.meta.env.VITE_ADMIN_EMAIL || "",
+  uid: import.meta.env.VITE_ADMIN_UID || ""
+};
+export const adminConfigured = Object.values(adminConfig).every(Boolean);
 const app = initializeApp(firebaseConfigured ? config : { apiKey: "missing", projectId: "missing", appId: "missing" });
 export const auth = getAuth(app);
 export const db = getFirestore(app);

@@ -1,11 +1,10 @@
 import { EmailAuthProvider, reauthenticateWithCredential, signInWithEmailAndPassword, signOut, updatePassword } from "firebase/auth";
 import { collection, doc, getDoc, onSnapshot, query, runTransaction, serverTimestamp, setDoc, where, type Unsubscribe } from "firebase/firestore";
-import { auth, db, ELECTION_ID } from "./firebase";
+import { adminConfig, auth, db, ELECTION_ID } from "./firebase";
 import { normalizeStudentId, participantDocumentId, validateStudent } from "./domain";
 import type { AuditEntry, Election, Participant } from "./types";
 
-const usernameEmail=(username:string)=>`${username.trim().toLowerCase()}@cac-election.local`;
-export async function login(username:string,password:string){const credential=await signInWithEmailAndPassword(auth,usernameEmail(username),password);const admin=await getDoc(doc(db,"admins",credential.user.uid));if(!admin.exists()||admin.data().active!==true){await signOut(auth);throw new Error("هذا الحساب غير مخول لإدارة الانتخابات")};return credential.user}
+export async function login(username:string,password:string){if(username.trim().toLowerCase()!==adminConfig.username.toLowerCase())throw new Error("بيانات الدخول غير صحيحة");const credential=await signInWithEmailAndPassword(auth,adminConfig.email,password);if(credential.user.uid!==adminConfig.uid){await signOut(auth);throw new Error("هوية المدير لا تطابق الحساب المخول")};const admin=await getDoc(doc(db,"admins",credential.user.uid));if(!admin.exists()||admin.data().active!==true||admin.data().username!==adminConfig.username){await signOut(auth);throw new Error("هذا الحساب غير مخول لإدارة الانتخابات")};return credential.user}
 export const logout=()=>signOut(auth);
 export async function changePassword(currentPassword:string,newPassword:string,displayName:string){const user=auth.currentUser;if(!user||!user.email)throw new Error("انتهت الجلسة");await reauthenticateWithCredential(user,EmailAuthProvider.credential(user.email,currentPassword));await updatePassword(user,newPassword);await setDoc(doc(collection(db,"auditLogs")),{electionId:ELECTION_ID,participantId:ELECTION_ID,action:"password_change",before:null,after:null,administratorId:user.uid,administratorName:displayName,reason:"تغيير كلمة المرور",createdAt:serverTimestamp()})}
 export async function ensureElection(){const ref=doc(db,"elections",ELECTION_ID),snap=await getDoc(ref);if(!snap.exists())await setDoc(ref,{name:"انتخابات قسم الذكاء الاصطناعي",cohort:"125",registrationOpen:true,updatedAt:serverTimestamp()})}

@@ -23,6 +23,7 @@
 
 4. انشر القواعد: `npx firebase-tools login` ثم `npx firebase-tools use <PROJECT_ID>` ثم `npx firebase-tools deploy --only firestore:rules`.
 5. أضف قيم Web App العامة التالية كـGitHub Actions repository secrets: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, و`VITE_FIREBASE_APP_ID`.
+   أضف كذلك `VITE_ADMIN_USERNAME`, `VITE_ADMIN_EMAIL`, و`VITE_ADMIN_UID` لربط واجهة اسم المستخدم بحساب Firebase الحقيقي والتحقق الصريح من UID.
 6. أضف `khaledhamayel2005.github.io` إلى Firebase Authentication → Settings → Authorized domains.
 7. أعد تشغيل Workflow **Build and deploy GitHub Pages**.
 
