@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { AuditLog, getActiveElection, Participant } from "./models";
 import { isDuplicateKey, normalizeStudentId } from "./utils";
 import { participantSchema } from "./validation";
@@ -9,6 +10,7 @@ export class RegistrationError extends Error {
 export async function registerParticipant(input: unknown, user: { id: string; displayName: string }) {
   const parsed = participantSchema.safeParse(input);
   if (!parsed.success) throw new RegistrationError(parsed.error.issues[0].message, 400);
+  await Participant.init();
   const election = await getActiveElection();
   if (!election.registrationOpen) throw new RegistrationError("التسجيل مغلق حاليًا", 423);
   try {
@@ -21,15 +23,22 @@ export async function registerParticipant(input: unknown, user: { id: string; di
 }
 
 export async function correctParticipant(id: string, input: { action: "correct"|"void"; reason: string; studentName?: string; studentId?: string }, user: { id: string; displayName: string }) {
-  const existing = await Participant.findById(id);
-  if (!existing) throw new RegistrationError("السجل غير موجود", 404);
-  const before = existing.toObject();
-  if (input.action === "void") existing.status = "void";
-  else {
-    if (!input.studentName || !input.studentId) throw new RegistrationError("الاسم والرقم مطلوبان للتصحيح", 400);
-    existing.studentName = input.studentName; existing.studentId = input.studentId; existing.normalizedStudentId = normalizeStudentId(input.studentId);
-  }
-  try { await existing.save(); } catch (error) { if (isDuplicateKey(error)) throw new RegistrationError("الرقم الجامعي مسجل لطالب آخر", 409); throw error; }
-  await AuditLog.create({ electionId: existing.electionId, participantId: existing._id, action: input.action, before, after: existing.toObject(), administratorId: user.id, administratorName: user.displayName, reason: input.reason });
-  return existing;
+  const session = await mongoose.startSession();
+  let result;
+  try {
+    await session.withTransaction(async () => {
+      const existing = await Participant.findById(id).session(session);
+      if (!existing) throw new RegistrationError("السجل غير موجود", 404);
+      const before = existing.toObject();
+      if (input.action === "void") existing.status = "void";
+      else {
+        if (!input.studentName || !input.studentId) throw new RegistrationError("الاسم والرقم مطلوبان للتصحيح", 400);
+        existing.studentName = input.studentName; existing.studentId = input.studentId; existing.normalizedStudentId = normalizeStudentId(input.studentId);
+      }
+      try { await existing.save({ session }); } catch (error) { if (isDuplicateKey(error)) throw new RegistrationError("الرقم الجامعي مسجل لطالب آخر", 409); throw error; }
+      await AuditLog.create([{ electionId: existing.electionId, participantId: existing._id, action: input.action, before, after: existing.toObject(), administratorId: user.id, administratorName: user.displayName, reason: input.reason }], { session });
+      result = existing;
+    });
+    return result!;
+  } finally { await session.endSession(); }
 }

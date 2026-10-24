@@ -1,15 +1,15 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import mongoose from "mongoose";
-import { MongoMemoryServer } from "mongodb-memory-server";
+import { MongoMemoryReplSet } from "mongodb-memory-server";
 import { AuditLog, Election, Participant } from "@/lib/models";
 import { correctParticipant, registerParticipant, RegistrationError } from "@/lib/registration";
 import { participantSchema } from "@/lib/validation";
 import { middleware } from "@/middleware";
 import { NextRequest } from "next/server";
 
-let mongo: MongoMemoryServer;
+let mongo: MongoMemoryReplSet;
 const admin = { id: new mongoose.Types.ObjectId().toString(), displayName: "منظم الاختبار" };
-beforeAll(async()=>{ mongo=await MongoMemoryServer.create(); await mongoose.connect(mongo.getUri()); await Participant.syncIndexes(); });
+beforeAll(async()=>{ mongo=await MongoMemoryReplSet.create({replSet:{count:1}}); await mongoose.connect(mongo.getUri()); await Participant.syncIndexes(); });
 afterAll(async()=>{ await mongoose.disconnect(); await mongo.stop(); });
 beforeEach(async()=>{ await Promise.all([Participant.deleteMany({}),Election.deleteMany({}),AuditLog.deleteMany({})]); });
 
