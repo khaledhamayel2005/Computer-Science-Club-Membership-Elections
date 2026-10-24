@@ -24,6 +24,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Verify Firebase configuration
+        run: npm run verify:firebase
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
       - run: npm run build
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
