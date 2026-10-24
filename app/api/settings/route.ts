@@ -1,9 +1,0 @@
-import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import { z } from "zod";
-import { requireSession } from "@/lib/auth";
-import { connectDB } from "@/lib/db";
-import { Administrator, AuditLog, getActiveElection } from "@/lib/models";
-import { apiError } from "@/lib/http";
-const schema=z.object({name:z.string().trim().min(3),cohort:z.string().trim().min(1),registrationOpen:z.boolean(),reason:z.string().trim().min(5),currentPassword:z.string().optional(),newPassword:z.string().min(8).optional()});
-export async function PATCH(req:Request){try{const user=await requireSession();await connectDB();const raw=await req.json();const parsed=schema.safeParse({...raw,registrationOpen:raw.registrationOpen==="true",newPassword:raw.newPassword||undefined});if(!parsed.success)return NextResponse.json({error:parsed.error.issues[0].message},{status:400});const election=await getActiveElection(),before=election.toObject();election.name=parsed.data.name;election.cohort=parsed.data.cohort;election.registrationOpen=parsed.data.registrationOpen;await election.save();await AuditLog.create({electionId:election._id,participantId:election._id,action:"settings",before,after:election.toObject(),administratorId:user.id,administratorName:user.displayName,reason:parsed.data.reason});if(parsed.data.newPassword){const admin=await Administrator.findById(user.id);if(!admin||!parsed.data.currentPassword||!await bcrypt.compare(parsed.data.currentPassword,admin.passwordHash))return NextResponse.json({error:"كلمة المرور الحالية غير صحيحة، حُفظت إعدادات الانتخابات دون تغيير كلمة المرور"},{status:400});admin.passwordHash=await bcrypt.hash(parsed.data.newPassword,12);await admin.save();await AuditLog.create({electionId:election._id,participantId:election._id,action:"password_change",before:{},after:{},administratorId:user.id,administratorName:user.displayName,reason:"تغيير كلمة المرور"})}return NextResponse.json({ok:true})}catch(e){return apiError(e)}}
