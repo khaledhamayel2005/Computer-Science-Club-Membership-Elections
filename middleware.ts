@@ -1,0 +1,3 @@
+import { NextRequest, NextResponse } from "next/server";
+export function middleware(req:NextRequest){const protectedPath=req.nextUrl.pathname.startsWith("/dashboard")||req.nextUrl.pathname.startsWith("/api/participants")||req.nextUrl.pathname.startsWith("/api/settings")||req.nextUrl.pathname.startsWith("/api/export");if(protectedPath&&!req.cookies.get("cac_session")){if(req.nextUrl.pathname.startsWith("/api/"))return NextResponse.json({error:"غير مصرح"},{status:401});return NextResponse.redirect(new URL("/login",req.url))}return NextResponse.next()}
+export const config={matcher:["/dashboard/:path*","/api/participants/:path*","/api/settings/:path*","/api/export/:path*"]};
